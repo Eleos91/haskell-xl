@@ -9,6 +9,7 @@ It's my first haskell programm. I forked the c code i took as a reference.
 - unix (2.7.2.2)
 - time (1.8.0.2)
 - split (0.2.3.3)
+- monad-loops (0.4.3)
 - X11 (1.9)
 
 
