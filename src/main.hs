@@ -1,12 +1,13 @@
+module Main where
+
 import System.Posix.User
 import System.Unix.Shadow
-import System.Posix.Types
 import Data.List.Split
 import Foreign.C.String
 import Graphics.X11.Xlib
 import Graphics.X11.Xlib.Extras
-import Control.Monad.Loops
 import System.Exit
+import Foreign.Marshal.Alloc
 import Data.Maybe
 
 foreign import ccall safe "crypt.h"
@@ -29,18 +30,16 @@ getSpwdForSUserEntry sUserEntry =
     s = "$" ++ (splitpwd !! 0) ++ "$" ++ (splitpwd !! 1)
     p = splitpwd !! 2
 
-getSpwdString :: Spwd -> String
-getSpwdString x = (salt x) ++ "$" ++ (pwd x)
-
-checkpw x y 
-  | x == y  = "correct!"
-  | True    = "nope!"
-
 notEmpty :: String -> Bool
-notEempty [] = False
+notEmpty [] = False
 notEmpty _ = True
 
-event_loop :: String -> XEventPtr -> Display -> Spwd -> IO ()
+event_loop :: 
+  String -> 
+  XEventPtr -> 
+  Display -> 
+  Spwd -> 
+  IO ()
 event_loop input event display spwd = do
   nextEvent display event
   event_type <- get_EventType event
@@ -54,6 +53,8 @@ event_loop input event display spwd = do
       pw <- newCString input
       cSalt <- newCString $ salt spwd
       user_input_hash <- crypt pw cSalt
+      free pw
+      free cSalt
       user_input_hash <- peekCString user_input_hash -- idk how to do this the right way...
       if (
          (notEmpty user_input) && 
@@ -69,18 +70,15 @@ event_loop input event display spwd = do
   else do
     event_loop input event display spwd
 
-
+main :: IO ()
 main = do
-  current_uid <- getEffectiveUserID
   current_login_name <- getLoginName
-  setUserID (0 :: UserID)
   current_usershadow <- getSUserEntryForName current_login_name
-  setUserID current_uid
   let spwd = getSpwdForSUserEntry current_usershadow
   display <- openDisplay ""
   let root_window = defaultRootWindow display
-  grab_pointer_status <- grabPointer display root_window True buttonPressMask grabModeAsync grabModeAsync none none currentTime
-  grab_keyboard_status <- grabKeyboard display root_window False grabModeAsync grabModeAsync currentTime
+  _ <- grabPointer display root_window True buttonPressMask grabModeAsync grabModeAsync none none currentTime
+  _ <- grabKeyboard display root_window False grabModeAsync grabModeAsync currentTime
   selectInput display root_window keyPressMask
   allocaXEvent $ \event -> do event_loop "" event display spwd
 
