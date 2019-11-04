@@ -1,3 +1,6 @@
-*.hi
-*.o
+dist/
+.stack-work
+Makefile
 xl
+**.hi
+**.o
